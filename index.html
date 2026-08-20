@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digital QR Menu</title>
+    <script src="https://tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 font-sans pb-24">
+
+    <!-- Header -->
+    <header class="bg-amber-500 text-white text-center py-6 shadow-md">
+        <h1 class="text-2xl font-bold tracking-wide">Gourmet Express</h1>
+        <p class="text-sm opacity-90">Scan, Order, and Enjoy</p>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-md mx-auto p-4 space-y-4">
+        
+        <!-- Table Number Indicator (Parsed from QR link automatically) -->
+        <div class="bg-amber-100 border border-amber-300 text-amber-800 text-center py-2 rounded-lg font-semibold">
+            📍 Table Number: <span id="table-display">Detecting...</span>
+        </div>
+
+        <!-- Menu Section -->
+        <h2 class="text-xl font-bold text-gray-800 mt-4 border-b pb-2">Popular Dishes</h2>
+        <div class="space-y-3">
+            <!-- Item 1 -->
+            <div class="bg-white p-4 rounded-xl shadow-sm flex justify-between items-center border">
+                <div>
+                    <h3 class="font-bold text-gray-800">Classic Cheeseburger</h3>
+                    <p class="text-xs text-gray-500">Cheddar, pickles, secret sauce</p>
+                    <p class="text-amber-600 font-semibold mt-1">$9.99</p>
+                </div>
+                <button onclick="addToCart('Classic Cheeseburger')" class="bg-amber-500 hover:bg-amber-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition">Add</button>
+            </div>
+
+            <!-- Item 2 -->
+            <div class="bg-white p-4 rounded-xl shadow-sm flex justify-between items-center border">
+                <div>
+                    <h3 class="font-bold text-gray-800">Crispy French Fries</h3>
+                    <p class="text-xs text-gray-500">Sea salt and rosemary mix</p>
+                    <p class="text-amber-600 font-semibold mt-1">$4.50</p>
+                </div>
+                <button onclick="addToCart('Crispy French Fries')" class="bg-amber-500 hover:bg-amber-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition">Add</button>
+            </div>
+        </div>
+
+        <!-- Special Notes Area -->
+        <div class="mt-4">
+            <label class="block text-sm font-semibold text-gray-700 mb-1">Special Instructions / Allergies:</label>
+            <textarea id="order-notes" rows="2" placeholder="e.g., No onions, extra ketchup..." class="w-full p-3 border rounded-xl focus:ring-2 focus:ring-amber-400 focus:outline-none text-sm"></textarea>
+        </div>
+    </main>
+
+    <!-- Sticky Bottom Cart & Checkout Bar -->
+    <div class="fixed bottom-0 left-0 right-0 bg-white border-t p-4 shadow-xl max-w-md mx-auto">
+        <div class="flex items-center justify-between mb-2">
+            <span class="text-sm text-gray-600 font-medium">Your Selection:</span>
+            <span id="cart-summary" class="text-sm font-bold text-gray-800">0 items</span>
+        </div>
+        <button onclick="submitOrder()" id="submit-btn" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl transition text-center shadow-md">
+            🚀 Send Order to Kitchen
+        </button>
+    </div>
+
+    <!-- Logic Script -->
+    <script>
+        // Paste your exact n8n Production Webhook URL here
+        const N8N_WEBHOOK_URL = 'YOUR_N8N_PRODUCTION_WEBHOOK_URL';
+
+        let cart = [];
+        
+        // Extract Table Number from URL query parameter (?table=5)
+        const urlParams = new URLSearchParams(window.location.search);
+        const tableNum = urlParams.get('table') || "Not specified";
+        document.getElementById('table-display').innerText = tableNum;
+
+        function addToCart(itemName) {
+            cart.push(itemName);
+            document.getElementById('cart-summary').innerText = `${cart.length} item(s)`;
+            alert(`${itemName} added to your order!`);
+        }
+
+        async function submitOrder() {
+            if (cart.length === 0) {
+                alert("Please add at least one item to your order first.");
+                return;
+            }
+
+            const notes = document.getElementById('order-notes').value;
+            const btn = document.getElementById('submit-btn');
+            
+            // Format list for n8n processing
+            const itemsString = cart.join(', ');
+
+            // UI feedback
+            btn.innerText = "Sending...";
+            btn.disabled = true;
+
+            try {
+                const response = await fetch(N8N_WEBHOOK_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        table: tableNum,
+                        items: itemsString,
+                        notes: notes
+                    })
+                });
+
+                if (response.ok) {
+                    alert("🎉 Order sent successfully! The kitchen is preparing it.");
+                    cart = [];
+                    document.getElementById('cart-summary').innerText = "0 items";
+                    document.getElementById('order-notes').value = "";
+                } else {
+                    alert("⚠️ Something went wrong. Please try again or call a waiter.");
+                }
+            } catch (error) {
+                alert("Error connecting to server. Please try again.");
+            } finally {
+                btn.innerText = "🚀 Send Order to Kitchen";
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
